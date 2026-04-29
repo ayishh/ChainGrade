@@ -1,50 +1,77 @@
-# GPA Recorder DApp (Next.js + Styled Components)
+# GPA Recorder DApp
 
-This app includes:
+Next.js frontend for `contracts/GPARecorder.sol`, deployed on **BNB Smart Chain Testnet** (chain id **97**, hex `0x61`). Students use MetaMask to write data; sponsors can read any address over **JSON-RPC** without a wallet.
 
-- **Student portal** — connect wallet, set display name once (locked), add semester rows (year, semester #, GPA × 100), view a table of on-chain records.
-- **Sponsor portal** — fetch any student’s records by address using a **read-only** JSON-RPC connection (no wallet required for the lookup).
-- **Solidity contract** — deploy from Remix on **BNB Smart Chain Testnet**.
+## What’s in the repo (matches the code)
 
-## 1) Install and run frontend
+| Piece | Location |
+|--------|-----------|
+| Home / **Student** UI | `src/app/page.js` → route `/` |
+| **Sponsor** UI | `src/app/sponsor/page.js` → route `/sponsor` |
+| Root layout, metadata title/description | `src/app/layout.js` |
+| Tab icon | `src/app/icon.png` (Next serves it as `/icon.png`) |
+| Contract address + ABI + `BSC_TESTNET_CHAIN_ID` | `src/lib/contract.js` |
+| Sponsor RPC URL | `src/lib/contract.js` — `BSC_TESTNET_RPC`: uses `process.env.NEXT_PUBLIC_BSC_TESTNET_RPC` if set, else `https://data-seed-prebsc-1-s1.binance.org:8545` |
+| Wallet: connect, disconnect, `accountsChanged` | `src/lib/WalletContext.js` |
+| EIP-1193 helper (multi-wallet / MetaMask) | `src/lib/getInjectedEthereum.js` |
+| `wallet_switchEthereumChain` + `wallet_addEthereumChain` (4902) | `src/lib/bscTestnet.js` |
+| Header / footer shell | `src/components/DAppChrome.js` |
+| Page wrapper | `src/components/DAppPageShell.js` |
+| styled-components SSR | `src/lib/styledRegistry.js` |
+| Solidity | `contracts/GPARecorder.sol` |
+
+**Important:** The deployed address is the **`CONTRACT_ADDRESS` string in `src/lib/contract.js`**. This project does **not** read `NEXT_PUBLIC_CONTRACT_ADDRESS` from env; change that file after you deploy. Only the sponsor RPC is overridden via env (see above).
+
+## Stack (`package.json`)
+
+- Next.js **16.x**, React **19.x**, **styled-components** **6.x**, **ethers** **6.x**
+
+## Scripts
 
 ```bash
 npm install
-npm run dev
+npm run dev      # dev server (default http://localhost:3000)
+npm run build
+npm run start
+npm run lint
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+## Wallet behavior (implementation)
 
-## 2) Deploy smart contract in Remix
+- **Connect** calls `eth_requestAccounts`, then `ensureBscTestnet` (switch to `0x61`, or add chain if MetaMask returns **4902**), then stores the signer address.
+- **Disconnect** only clears local React state (MetaMask has no real “disconnect” API).
+- Use a normal browser (Chrome/Edge) with MetaMask; `requireInjectedProvider` explains when no injectable wallet exists (common in IDE embedded previews).
 
-Contract file: `contracts/GPARecorder.sol`
+## Student page (`/`)
 
-1. Open [https://remix.ethereum.org/](https://remix.ethereum.org/)
-2. Create/import `GPARecorder.sol`.
-3. Compile with Solidity `0.8.20` (or compatible `0.8.x`).
-4. In “Deploy & run transactions”:
-   - Environment: **Injected Provider - MetaMask**
-   - Network in MetaMask: **BNB Smart Chain Testnet (chain id 97)**
-5. Deploy the contract and copy the deployed contract address.
+- If no account: placeholder asks user to connect (copy also mentions viewing records by address — sponsor flow is on `/sponsor`).
+- **Set name:** `setName` once; UI disables input when `nameLocked` is true.
+- **Add semester:** Fields are year, semester number, GPA as a **decimal** (e.g. `3.85`). The client sends `Math.round(gpa * 100)` as the third argument to `addSemester`.
+- **Client-side checks before send:** year must be integer **1900–2100**; semester positive integer; GPA in **[0, 4]**.
+- **On-chain rules** (contract; tx can still revert if UI and contract disagree): `gpa <= 400`, `year > 2000`, `semesterNumber` must be **1 or 2**.
+- Records table: data from `getStudent(account)`; rows decoded in `mapRecords` using tuple fields / indices.
 
-## 3) Connect frontend to deployed contract
+## Sponsor page (`/sponsor`)
 
-Create `.env.local` in the project root:
+- `ethers.JsonRpcProvider(BSC_TESTNET_RPC)` + read-only `getStudent(address)`.
+- No wallet required for the fetch button.
 
-```env
-NEXT_PUBLIC_CONTRACT_ADDRESS=0xYourDeployedContractAddress
-```
+## Smart contract (`contracts/GPARecorder.sol`)
 
-Optional — custom BSC testnet RPC for sponsor read-only calls (defaults to a public endpoint):
+- `setName(string)` — sets name and `nameLocked` if not already locked; non-empty name required.
+- `addSemester(uint256 year, uint256 semesterNumber, uint256 gpa)` — `gpa` is **0–400** (hundredths of 4.0, e.g. 385 → 3.85).
+- `getStudent(address)` — returns `name`, `nameLocked`, `Semester[]` with `year`, `semesterNumber`, `gpa`.
 
-```env
-NEXT_PUBLIC_BSC_TESTNET_RPC=https://data-seed-prebsc-1-s1.binance.org:8545
-```
+After changing the contract, update **`CONTRACT_ABI` in `src/lib/contract.js`** to match the Remix compilation artifact.
 
-Restart the dev server after changing `.env.local`.
+## Deploy (Remix + BSC testnet)
 
-## Contract behavior
+1. Open [Remix](https://remix.ethereum.org/), use `contracts/GPARecorder.sol`, compiler **0.8.20** (or compatible **0.8.x**).
+2. **Deploy & run:** **Injected Provider — MetaMask**, network **BNB Smart Chain Testnet**.
+3. Copy the deployed address into **`CONTRACT_ADDRESS`** in `src/lib/contract.js` and paste the matching ABI.
 
-- `setName(string)` — once per wallet; then `nameLocked` is true.
-- `addSemester(uint256 year, uint256 semesterNumber, uint256 gpaTimes100)` — appends a semester row; `gpaTimes100` must be ≤ 400 (e.g. `387` → 3.87).
-- `getStudent(address)` — returns `name`, `nameLocked`, and `records[]` of `{ year, semesterNumber, gpaTimes100 }`.
+Optional: set **`NEXT_PUBLIC_BSC_TESTNET_RPC`** in `.env.local` if you want a different RPC for sponsor reads; restart `npm run dev` after changing env.
+
+## Layout / hydration
+
+`src/app/layout.js` sets **`suppressHydrationWarning`** on `<html>` and `<body>` to avoid mismatches when browser extensions alter the DOM.
