@@ -20,20 +20,12 @@ Next.js frontend for `contracts/GPARecorder.sol`, deployed on **BNB Smart Chain 
 | styled-components SSR | `src/lib/styledRegistry.js` |
 | Solidity | `contracts/GPARecorder.sol` |
 
-**Important:** The deployed address is the **`CONTRACT_ADDRESS` string in `src/lib/contract.js`**. This project does **not** read `NEXT_PUBLIC_CONTRACT_ADDRESS` from env; change that file after you deploy. Only the sponsor RPC is overridden via env (see above).
-
-## Stack (`package.json`)
-
-- Next.js **16.x**, React **19.x**, **styled-components** **6.x**, **ethers** **6.x**
 
 ## Scripts
 
 ```bash
 npm install
-npm run dev      # dev server (default http://localhost:3000)
-npm run build
-npm run start
-npm run lint
+npm run dev  
 ```
 
 ## Wallet behavior (implementation)
@@ -53,7 +45,6 @@ npm run lint
 
 ## Sponsor page (`/sponsor`)
 
-- `ethers.JsonRpcProvider(BSC_TESTNET_RPC)` + read-only `getStudent(address)`.
 - No wallet required for the fetch button.
 
 ## Smart contract (`contracts/GPARecorder.sol`)
@@ -61,17 +52,5 @@ npm run lint
 - `setName(string)` — sets name and `nameLocked` if not already locked; non-empty name required.
 - `addSemester(uint256 year, uint256 semesterNumber, uint256 gpa)` — `gpa` is **0–400** (hundredths of 4.0, e.g. 385 → 3.85).
 - `getStudent(address)` — returns `name`, `nameLocked`, `Semester[]` with `year`, `semesterNumber`, `gpa`.
+- 
 
-After changing the contract, update **`CONTRACT_ABI` in `src/lib/contract.js`** to match the Remix compilation artifact.
-
-## Deploy (Remix + BSC testnet)
-
-1. Open [Remix](https://remix.ethereum.org/), use `contracts/GPARecorder.sol`, compiler **0.8.20** (or compatible **0.8.x**).
-2. **Deploy & run:** **Injected Provider — MetaMask**, network **BNB Smart Chain Testnet**.
-3. Copy the deployed address into **`CONTRACT_ADDRESS`** in `src/lib/contract.js` and paste the matching ABI.
-
-Optional: set **`NEXT_PUBLIC_BSC_TESTNET_RPC`** in `.env.local` if you want a different RPC for sponsor reads; restart `npm run dev` after changing env.
-
-## Layout / hydration
-
-`src/app/layout.js` sets **`suppressHydrationWarning`** on `<html>` and `<body>` to avoid mismatches when browser extensions alter the DOM.
