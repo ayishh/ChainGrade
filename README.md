@@ -1,6 +1,6 @@
 # GPA Recorder DApp
 
-Next.js frontend for `contracts/GPARecorder.sol`, deployed on **BNB Smart Chain Testnet** (chain id **97**, hex `0x61`). Students use MetaMask to write data; sponsors can read any address over **JSON-RPC** without a wallet.
+Link to video presentation: https://psu.zoom.us/rec/share/IgpKLvB83t33pY2xBtDSOGsUQlN-_ThbsI1GgO-0ww-9WySOjrnkm2Dr6fWZU8hv.q73qk5kR6CVMVQNL 
 
 ## What’s in the repo (matches the code)
 
